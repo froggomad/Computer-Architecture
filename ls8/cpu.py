@@ -5,9 +5,32 @@ import sys
 class CPU:
     """Main CPU class."""
 
-    def __init__(self):
+    def __init__(self, bits = 8):
         """Construct a new CPU."""
-        pass
+        max_value = 2^bits
+        # Machine State
+        self.running = True
+        # holds instructions (pc), registers (pc + 1), and values (pc + 2)
+        self.ram = [0] * max_value
+        # registers execute instructions (1 reg per bit?)
+        self.reg = [0] * bits
+
+        # Program Counter - points to first byte of running instruction in ram
+        # instructions should increment this appropriately
+        self.pc = 0
+
+        #address being read or written to
+        self.MAR = 0
+        #value at address being read or written 
+        self.MDR = 0
+
+        self.load()
+
+        self.instructions = {
+            "LDI": 0b10000010,
+            "PRN": 0b01000111,
+            "HLT": 0b00000001
+        }
 
     def load(self):
         """Load a program into memory."""
@@ -60,6 +83,57 @@ class CPU:
 
         print()
 
+    def ram_read(self, pc):
+        value = self.ram[pc]
+        self.MAR = pc
+        self.MDR = value
+        return value
+
+    def ram_write(self, pc, val):        
+        self.MAR = pc
+        self.MDR = val
+        self.ram[pc] = val
+        return (pc, val)
+        
+    def save_reg(self, reg, value):
+        self.reg[reg] = value
+        #move ptr to next instruction
+        self.pc += 3
+
+    #registry is always the ptr after the instruction
+    def get_curr_reg(self):
+        return self.ram_read(self.pc + 1)
+    
+    def get_curr_val(self):
+        return self.ram_read(self.pc + 2)
+
+    def ldi(self):        
+        #copy the bit to the result if it exists (255 is 11111111)
+        self.reg[self.get_curr_reg()] = self.get_curr_val() & 255
+        self.pc += 3
+
+    def prn(self):
+        print(self.reg[self.get_curr_reg()])
+        #move ptr to next instruction
+        self.pc += 2
+
+    def halt(self):
+        self.running = False
+
     def run(self):
         """Run the CPU."""
-        pass
+        while self.running:
+            ir = self.ram_read(self.pc)
+            #methods move ptr to next instruction
+            if ir == self.instructions["LDI"]:
+                self.ldi()
+
+            elif ir == self.instructions["PRN"]:                
+                self.prn()
+
+            elif ir == self.instructions["HLT"]:
+                self.halt()
+                
+pc = CPU()
+pc.run()
+pc.trace()
