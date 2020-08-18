@@ -32,7 +32,6 @@ class CPU:
         """Load a program into memory."""
         #init 
         address = 0
-
         #construct file path
         try:
             filename = sys.argv[1]
@@ -79,6 +78,8 @@ class CPU:
             raise Exception("Unsupported ALU operation")
 
     def mul(self):
+        print(self.reg[1])
+        print(f"multiplying {self.reg[self.ram_read(self.pc+1)]} and {self.reg[self.ram_read(self.pc+2)]}")
         self.alu("MUL", self.ram_read(self.pc+1), self.ram_read(self.pc+2))
 
     def trace(self):
@@ -134,7 +135,7 @@ class CPU:
 
         # in other words, 255 is an AND mask for this machine to determine if the value fits
         int_value = self.ram_read(self.pc + 2)
-        self.reg[self.pc] = int_value & 255
+        self.reg[self.get_curr_reg()] = int_value & 255
 
     def prn(self):
         print(self.reg[self.get_curr_reg()])
@@ -158,6 +159,7 @@ class CPU:
                 print(instruction)
                 
                 self.pc += shift
+                print(f"shifted {shift}")
 
             else:
                 print("Invalid Instruction")
