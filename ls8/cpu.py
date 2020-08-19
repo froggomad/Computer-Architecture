@@ -66,7 +66,7 @@ class CPU:
                     continue
             
                 try:
-                    line = bin(int(temp[0], 2))
+                    line = int(temp[0], 2)
                     self.ram[address] = line
 
                 except ValueError:
@@ -114,7 +114,7 @@ class CPU:
 
     def ram_read(self, pc):
         value = self.ram[pc]
-        return int(value, 2)
+        return value
 
     def ram_write(self, pc, val):
         self.ram[pc] = val
@@ -153,13 +153,13 @@ class CPU:
     def hlt(self):
         self.running = False
 
-    def pop(self):        
+    def pop(self):
         # set the value at the top of the stack to the registry in the instruction
-        self.reg[self.get_curr_reg()] = self.ram[self.reg[self.SP]]
+        self.reg[self.get_curr_reg()] = self.ram_read(self.reg[self.SP])
         #increment the current register on the stack
         self.reg[self.SP] += 1
 
-    def push(self):        
+    def push(self):
         #decrement the current register on the stack
         self.reg[self.SP] -= 1
         #set the address in ram to the value in the registry from the instruction
@@ -191,6 +191,4 @@ class CPU:
             
                 
 pc = CPU()
-pc.trace()
 pc.run()
-pc.trace()
