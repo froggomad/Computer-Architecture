@@ -23,7 +23,7 @@ class CPU:
         # Stack Pointer
         #init SP
         self.SP = self.num_registers - 1
-        self.reg[self.SP] = 0xf4 #F4 in hex
+        self.reg_write(self.SP, 0xf4) #F4 in hex        
 
         # Program Counter - points to first byte of running instruction in ram
         # instructions should increment this appropriately
@@ -85,10 +85,11 @@ class CPU:
         """ALU operations."""
 
         if op == "ADD":
-            self.reg[reg_a] = (self.reg[reg_a] + self.reg[reg_b]) & self.max_value
+            value = (self.reg_read(reg_a) + self.reg_read(reg_b) & self.max_value)
+            self.reg_write(reg_a, value)
         elif op == "MUL":
-            #255 is max_value mask
-            self.reg[reg_a] = (self.reg[reg_a] * self.reg[reg_b]) & self.max_value
+            value = (self.reg_read(reg_a) * self.reg_read(reg_b)) & self.max_value
+            self.reg_write(reg_a, value)             
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -127,6 +128,14 @@ class CPU:
         self.ram[pc] = val
         return (pc, val)
 
+    def reg_read(self, pc):
+        value = self.reg[pc]
+        return value
+
+    def reg_write(self, pc, val):
+        self.reg[pc] = val
+        return (pc, val)
+
     #registry is always the ptr after the instruction
     def get_curr_reg(self):
         return self.ram_read(self.pc + 1)
@@ -155,17 +164,17 @@ class CPU:
 
         # in other words, 255 is an AND mask for this machine to determine if the value fits
         int_value = self.get_curr_val()
-        self.reg[self.get_curr_reg()] = int_value & self.max_value
+        self.reg_write(self.get_curr_reg(), int_value & self.max_value)
 
     def prn(self):
-        print(self.reg[self.get_curr_reg()])
+        print(self.reg_read(self.get_curr_reg()))
 
     def hlt(self):
         self.running = False
 
     def pop(self):
         # set the value at the top of the stack to the value in the registry in the instruction
-        self.reg[self.get_curr_reg()] = self.ram_read(self.reg[self.SP])
+        self.reg_write(self.get_curr_reg(), self.ram_read(self.reg_read(self.SP)))        
         # increment the current register on the stack
         self.reg[self.SP] += 1
 
@@ -173,23 +182,22 @@ class CPU:
         #decrement the current register on the stack
         self.reg[self.SP] -= 1
         #set the address in ram to the value in the registry from the instruction
-        self.ram_write(self.reg[self.SP], self.reg[self.get_curr_reg()])
+        self.ram_write(self.reg_read(self.SP), self.reg_read(self.get_curr_reg()))
 
     def call(self):
         ret_addr = self.pc + 2
         self.reg[self.SP] -= 1
-        self.ram_write(self.reg[self.SP], ret_addr)
+        self.ram_write(self.reg_read(self.SP), ret_addr)
         #call
         reg_num = self.ram_read(self.get_curr_reg())
-        self.pc = self.reg[reg_num]
+        self.pc = self.reg_read(reg_num)
 
     def ret(self):
-        ret_addr = self.ram_read(self.reg[self.SP])
+        ret_addr = self.ram_read(self.reg_read(self.SP))
         self.reg[self.SP] += 1
         self.pc = ret_addr
 
-    def shift_bytes_by_ins_size(self):
-        ir = self.ram_read(self.pc)
+    def shift_bytes_by_ins_size(self, ir):
         size = ir >> 6
         shift = size + 1
         self.pc += shift
@@ -208,7 +216,7 @@ class CPU:
                 print(instruction)
                 #move the instruction pointer
                 if ir & 0b0010000 == 0:
-                    self.shift_bytes_by_ins_size()
+                    self.shift_bytes_by_ins_size(ir)
 
             else:
                 print(f"Invalid Instruction: {ir}")
