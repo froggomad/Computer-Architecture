@@ -15,7 +15,7 @@ class CPU:
         self.running = True
         # Machine Architecture
         # holds instructions (pc), registers (pc + 1), and values (pc + 2)
-        self.ram = ['0b0'] * self.memory_size
+        self.ram = [0] * self.memory_size
         # registers execute instructions
         self.num_registers = bits
         self.reg = [0] * self.num_registers
@@ -37,7 +37,10 @@ class CPU:
             0b00000001: "HLT",
             0b10100010: "MUL",
             0b01000101: "PUSH",
-            0b01000110: "POP"
+            0b01000110: "POP",
+            0b01010000: "CALL",
+            0b00010001: "RET",
+            0b10100000: "ADD"
         }
 
     def load(self):
@@ -48,12 +51,12 @@ class CPU:
         try:
             filename = sys.argv[1]
         except:
-            filename = 'stack.ls8'
+            filename = 'call.ls8'
         
         cur_path = os.path.dirname(__file__)
 
         new_path = os.path.relpath(f'examples/{filename}', cur_path)
-        
+      
         #load program from file
         with open(new_path) as f:
             for line in f:
@@ -67,16 +70,16 @@ class CPU:
             
                 try:
                     line = int(temp[0], 2)
-                    self.ram[address] = line
+                    print(line)
+                    self.ram_write(address, line)
 
                 except ValueError:
                     print(f"invalid number: {temp[0]}")
                 except IndexError:
                     print(f"index number {address} does not exist")
                 address += 1
-
-        for line in self.ram:
-            print(line)
+            
+        f.close()
 
     def alu(self, op, reg_a, reg_b):
         """ALU operations."""
@@ -89,22 +92,26 @@ class CPU:
         else:
             raise Exception("Unsupported ALU operation")
 
+    def add(self):
+        self.alu("ADD", self.get_curr_reg(), self.ram_read(self.pc+2))
+
     def mul(self):
-        self.alu("MUL", self.ram_read(self.pc+1), self.ram_read(self.pc+2))
+        self.alu("MUL", self.get_curr_reg(), self.ram_read(self.pc+2))
 
     def trace(self):
         """
         Handy function to print out the CPU state. You might want to call this
         from run() if you need help debugging.
         """
-
+        print(self.pc)
+        print(self.ram[self.pc])
         print(f"TRACE: %02X | %02X %02X %02X |" % (
             self.pc,
             #self.fl,
             #self.ie,
             self.ram_read(self.pc),
-            self.ram_read(self.pc + 1),
-            self.ram_read(self.pc + 2)
+            self.get_curr_reg(),
+            self.get_curr_val()
         ), end='')
 
         for i in range(8):
@@ -123,6 +130,9 @@ class CPU:
     #registry is always the ptr after the instruction
     def get_curr_reg(self):
         return self.ram_read(self.pc + 1)
+
+    def get_curr_val(self):
+        return self.ram_read(self.pc + 2)
 
     def ldi(self):        
         """copy the bit to the specified (current_reg) register if it fits"""
@@ -144,7 +154,7 @@ class CPU:
         # 0000000000 == 0 (result is 0)
 
         # in other words, 255 is an AND mask for this machine to determine if the value fits
-        int_value = self.ram_read(self.pc + 2)
+        int_value = self.get_curr_val()
         self.reg[self.get_curr_reg()] = int_value & self.max_value
 
     def prn(self):
@@ -154,40 +164,59 @@ class CPU:
         self.running = False
 
     def pop(self):
-        # set the value at the top of the stack to the registry in the instruction
+        # set the value at the top of the stack to the value in the registry in the instruction
         self.reg[self.get_curr_reg()] = self.ram_read(self.reg[self.SP])
-        #increment the current register on the stack
+        # increment the current register on the stack
         self.reg[self.SP] += 1
 
     def push(self):
         #decrement the current register on the stack
         self.reg[self.SP] -= 1
         #set the address in ram to the value in the registry from the instruction
-        self.ram[self.reg[self.SP]] = self.reg[self.get_curr_reg()]
+        self.ram_write(self.reg[self.SP], self.reg[self.get_curr_reg()])
+
+    def call(self):
+        ret_addr = self.pc + 2
+        self.reg[self.SP] -= 1
+        self.ram_write(self.reg[self.SP], ret_addr)
+        #call
+        reg_num = self.ram_read(self.get_curr_reg())
+        self.pc = self.reg[reg_num]
+
+    def ret(self):
+        ret_addr = self.ram_read(self.reg[self.SP])
+        self.reg[self.SP] += 1
+        self.pc = ret_addr
+
+    def shift_bytes_by_ins_size(self):
+        ir = self.ram_read(self.pc)
+        size = ir >> 6
+        shift = size + 1
+        self.pc += shift
 
     def run(self):
         """Run the CPU."""
         while self.running:
             ir = self.ram_read(self.pc)
-            size = ir >> 6
-            shift = size + 1
             
             if ir in self.instructions:
                 # get the method associated with the value returned from self.pc 
                 # the value returned from self.instructions is an uppercase string
                 instruction = getattr(CPU, self.instructions[self.ram_read(self.pc)].lower())
-                #pass self in to the method since self.instruction() isn't defined
+                # pass self in to the method since self.instruction() isn't defined (run the method)
                 instruction(self)
                 print(instruction)
-                
-                self.pc += shift
+                #move the instruction pointer
+                if ir & 0b0010000 == 0:
+                    self.shift_bytes_by_ins_size()
 
             else:
-                print("Invalid Instruction")
-                #TODO: NOOP Here?
+                print(f"Invalid Instruction: {ir}")
                 self.running = False
                 self.pc = 0
                 return
+
+            
             
                 
 pc = CPU()
