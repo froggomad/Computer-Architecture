@@ -14,10 +14,6 @@ class CPU:
         self.pc = 0
         # Comparison register - used to store comparison values
         self.fl = 6
-
-        self.E = 0
-        self.L = 0
-        self.G = 0
         
         # Machine Architecture
         self.memory_size = pow(2, bits)        
@@ -48,7 +44,8 @@ class CPU:
             0b10100111: "CMP2",
             0b01010100: "JMP",
             0b01010101: "JEQ",
-            0b01010110: "JNE"
+            0b01010110: "JNE",
+            0b10100011: "XOR2"
         }
 
     # MARK: Debug
@@ -81,7 +78,7 @@ class CPU:
         try:
             filename = sys.argv[1]
         except:
-            filename = 'sctest.ls8'
+            filename = 'XOR.ls8'
         
         cur_path = os.path.dirname(__file__)
 
@@ -100,7 +97,7 @@ class CPU:
             
                 try:
                     line = int(temp[0], 2)
-                    print(line)
+                    #print(line)
                     self.ram_write(address, line)
 
                 except ValueError:
@@ -120,7 +117,13 @@ class CPU:
             self.reg_write(reg_a, value)
         elif op == "MUL":
             value = (self.reg_read(reg_a) * self.reg_read(reg_b)) & self.max_value
-            self.reg_write(reg_a, value)             
+            self.reg_write(reg_a, value)
+        elif op == "XOR":
+            self.cmp2()
+            value = 0
+            if self.reg_read(self.fl) != 1:                
+                value = 1
+            self.reg_write(reg_a, value)
         else:
             raise Exception("Unsupported ALU operation")
 
@@ -133,6 +136,33 @@ class CPU:
         """multiply 2 registry values together and write the result to the first registry"""
         #TODO: get_cur_val instead of ram_read
         self.alu("MUL", self.get_curr_reg(), self.ram_read(self.pc+2))
+
+    def and2(self):
+        pass
+
+    def or2(self):
+        pass
+
+    def xor2(self): 
+        #None could really be passed in for the 2nd arg since this is using CMP       
+        self.alu("XOR", self.get_curr_reg(), self.get_curr_val())
+
+        # if value1 == value2:
+        #     #write 0
+        # else:
+        #     #write 1
+
+    def not2(self):
+        pass
+
+    def shl(self):
+        pass
+
+    def shr(self):
+        pass
+
+    def mod(self):
+        pass
     
     # MARK: Read
     def ram_read(self, pc):
@@ -152,13 +182,10 @@ class CPU:
 
         if value1 == value2:
             self.reg_write(self.fl, 1)
-            print(bin(self.reg_read(self.fl)))
         elif value1 > value2:
-            self.reg_write(self.fl, 2)
-            print(bin(self.reg_read(self.fl)))
+            self.reg_write(self.fl, 2)            
         else:
-            self.reg_write(self.fl, 4)
-            print(bin(self.reg_read(self.fl)))
+            self.reg_write(self.fl, 4)            
     
     def jmp(self):
         """Jump to the given register"""
@@ -286,8 +313,6 @@ class CPU:
                 instruction = getattr(CPU, ins_name.lower())                  
                 # pass self in to the method since self.instruction() isn't defined (run the method)
                 instruction(self)
-                
-                print(ins_name)
 
                 # move the instruction pointer if this isn't a call or return                
                 if ir & 0b0010000 == 0:
@@ -299,6 +324,5 @@ class CPU:
                 self.pc = 0
                 return
 
-                
 pc = CPU()
 pc.run()
