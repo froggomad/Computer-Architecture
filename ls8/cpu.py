@@ -45,7 +45,7 @@ class CPU:
             0b01010100: "JMP",
             0b01010101: "JEQ",
             0b01010110: "JNE",
-            0b10100011: "XOR2"
+            0b10101011: "XOR2"
         }
 
     # MARK: Debug
@@ -121,7 +121,7 @@ class CPU:
         elif op == "XOR":
             self.cmp2()
             value = 0
-            if self.reg_read(self.fl) != 1:                
+            if self.reg_read(self.fl) != 1:
                 value = 1
             self.reg_write(reg_a, value)
         else:
@@ -144,13 +144,8 @@ class CPU:
         pass
 
     def xor2(self): 
-        #None could really be passed in for the 2nd arg since this is using CMP       
+        # None, 0 etc could really be passed in for the 2nd arg since this is using CMP, but this is more readable
         self.alu("XOR", self.get_curr_reg(), self.get_curr_val())
-
-        # if value1 == value2:
-        #     #write 0
-        # else:
-        #     #write 1
 
     def not2(self):
         pass
